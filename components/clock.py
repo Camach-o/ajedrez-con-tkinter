@@ -14,7 +14,7 @@ else:
 """
 
 class Clock():
-    def __init__(self, container, board_view):
+    def __init__(self, container, board_view=1):
         self.container = container
         self.board_view = board_view
 
@@ -35,7 +35,7 @@ class Clock():
         self.bottom_time = tk.StringVar()
         self.update_timer(self.bottom_time, self.bottom_minute_hand, self.bottom_second_hand)
 
-    def create_clock_widgets(self):
+    def put_clock(self):
         # Top Clock
         top_frame = tk.Frame(self.container, bg=project_vars.OSCURO_FUERTE)
         top_frame.pack(side="top")
@@ -220,6 +220,6 @@ if __name__ == "__main__":
     frame_reloj.pack(side="left")
 
     r = Clock(frame_reloj, 1)
-    r.create_clock_widgets()
+    r.put_clock()
 
     ventana.mainloop()

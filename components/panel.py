@@ -191,7 +191,7 @@ class Panel:
         # wid_text.update_idletasks()
         # wid_text.yview_moveto(1.0)
 
-    def start_panel(self):
+    def put_panel(self):
         self.create_movements_viewer_widgets()
         self.create_movements_controller_widgets()
         self.create_chat_widgets()
@@ -203,7 +203,7 @@ if __name__ == "__main__":
 
 
     panel = Panel(root)
-    panel.start_panel()
+    panel.put_panel()
 
     a = "blacks"
 

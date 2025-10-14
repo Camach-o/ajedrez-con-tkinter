@@ -1,7 +1,7 @@
 if __name__ == "__main__":
     import tkinter as tk
     from tkinter import messagebox
-    import components.project_vars as project_vars 
+    import project_vars as project_vars 
 else:
     import tkinter as tk
     from tkinter import messagebox
@@ -300,18 +300,20 @@ class Menu(tk.Frame):
 
         option_called = option.widget.configure().get("text")[-1]
         if option_called in project_vars.menu_options:
-            if option_called == "Partida":
-                self.active_menu = self.game_menu
-            elif option_called == "Dificultad":
-                self.active_menu = self.difficulty_menu
-            elif option_called == "Reloj":
+            # if option_called == "Partida":
+            #     self.active_menu = self.game_menu
+            # elif option_called == "Dificultad":
+            #     self.active_menu = self.difficulty_menu
+            if option_called == "Reloj":
                 self.active_menu = self.clock_menu
-            elif option_called == "Emparejamiento":
-                self.active_menu = self.match_menu
+            # elif option_called == "Emparejamiento":
+            #     self.active_menu = self.match_menu
             elif option_called == "Estilo":
                 self.active_menu = self.style_menu
-            elif option_called == "Créditos":
-                self.active_menu = self.credits_menu
+            # elif option_called == "Créditos":
+            #     self.active_menu = self.credits_menu
+            else:
+                return
 
         if not self.menu_place:
             self._get_menu_place()

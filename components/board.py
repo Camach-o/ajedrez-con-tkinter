@@ -1,13 +1,13 @@
 from tkinter import *
-# if __name__ != "__main__":
-#     from components.pieces import *
-#     import components.project_vars as project_vars
-#     import components.game as game
+if __name__ == "__main__":
+    from components.pieces import *
+    import components.project_vars as project_vars
+    import components.game as game
     
-# else:
-from pieces import *
-import project_vars as project_vars
-import game
+else:
+    from pieces import *
+    import project_vars as project_vars
+    # import game
 from PIL import Image, ImageTk
 
 BOARD_LIMIT = 8
@@ -70,7 +70,6 @@ class Board:
 
         self.board = [[0 for _ in range(0, BOARD_LIMIT)] for _ in range(0, BOARD_LIMIT)]
         self.theme = {"white": "#bb935b", "black": "#592f0a"}
-        self.board_view = [1, 0]
         self.row_numbers = ["8", "7", "6", "5", "4", "3", "2", "1"]
         self.row_labels = []
         self.column_letters = ["a", "b", "c", "d", "e", "f", "g", "h"]
@@ -100,52 +99,66 @@ class Board:
             let = square.create_text(70, 68, text=n, font=("Arial Black", 16))
             self.column_labels.append(let)
 
-    def set_initial_position(self):
-        """ Create the pieces and place them in their inital positions on the board."""
+    def put_piece(self, square, type, color, board_view):
+        square.piece = Piece(square, 
+                             color=color, 
+                             type=type, 
+                             board_view=board_view)
 
-        if self.board_view[0] == 1:
-            aliniation = ("R", "N", "B", "Q", "K", "B", "N", "R")
-        else:
-            aliniation = ("R", "N", "B", "K", "Q", "B", "N", "R")
+    def set_fen_position(self, fen, board_view):
 
-        for piece_group in ({"row": 0, "color": 0 if self.board_view[0] else 1}, 
-                            {"row": 7, "color": 1 if self.board_view[0] else 0}):
-            for column, type in enumerate(aliniation):
-                square = self.board[piece_group['row']][column]
-                piece = Piece(square, color=piece_group['color'], type=type,
-                              board_view=self.board_view[0])
-                self.board[piece_group['row']][column].piece = piece
+        self.clear_board()
 
-        # Pawns
-        for square in self.board[1]:
-            piece = Piece(square, color=0 if self.board_view[0] else 1, type="P", 
-                          board_view=self.board_view[0])
-            square.piece = piece
+        if board_view == 0:
+            self.turn_the_board()
+            fen = fen[::-1]
 
-        for square in self.board[6]:
-            piece = Piece(square, color=1 if self.board_view[0] else 0, type="P",
-                          board_view=self.board_view[0])
-            square.piece = piece
+        row, column = 0, 0
+        for value in fen:
+            if value.upper() in "RNBQKP":
+                color = 1 if value.isupper() else 0
+                self.put_piece(self.board[row][column], 
+                               type=value.upper(), 
+                               color=color,
+                               board_view=board_view)
+                column += 1
+            elif value == "/":
+                row += 1
+                column = 0
+            elif value in "123456789":
+                v = int(value)
+                column += v
+
+            # si el valor es un número
+                # saltar la cantidad de cuadros igual al número
+            # si el valor es un espacio
+                # terminar de colocar piezas
+            
+            # si valor es w
+
+        pass
 
     def pieces_pruebas(self): # Eliminar luego de terminar
         """ Inserta en el tablero pieces para probar los mecanismos del juego."""
-        piece = Piece(self.board[7][4], color=1, type="K", board_view=self.board_view[0])
-        self.board[7][4].piece = piece
+        self.put_piece(self.board[7][4], "K", 1)
+        self.put_piece(self.board[5][1], "K", 0)
 
-        piece = Piece(self.board[0][0], color=0, type="K", board_view=self.board_view[0])
-        self.board[0][0].piece = piece
+    def turn_the_board(self):
+        """ Turn the board upside down."""
 
-        piece = Piece(self.board[3][4], color=1, type="N", board_view=self.board_view[0])
-        self.board[3][4].piece = piece
+        # self.board_view.reverse()
+        for i, row in enumerate(self.board):
+            row[0].delete(self.row_labels[i])
+        for i, column in enumerate(self.board[7]):
+            column.delete(self.column_labels[i])
 
-        piece = Piece(self.board[0][4], color=0, type="Q", board_view=self.board_view[0])
-        self.board[0][4].piece = piece
-
-        piece = Piece(self.board[4][4], color=1, type="P", board_view=self.board_view[0])
-        self.board[4][4].piece = piece
-
-        piece = Piece(self.board[6][0], color=1, type="P", board_view=self.board_view[0])
-        self.board[6][0].piece = piece
+        self.row_labels = []
+        self.column_labels = []
+        self.row_numbers.reverse()
+        self.column_letters.reverse()
+        self._create_position_labels()
+        self.set_theme(self.theme.get("white"), self.theme.get("black"))
+        self.clear_board()
 
     def set_theme(self, white, black):
         """ Set the theme on the squares and position labels on the board.
@@ -172,24 +185,6 @@ class Board:
             square.itemconfigure(label_id, 
                                  fill=theme[0] if theme[0] != square.color else theme[1])
 
-    def turn_the_board(self):
-        """ Turn the board upside down."""
-
-        self.board_view.reverse()
-        for i, row in enumerate(self.board):
-            row[0].delete(self.row_labels[i])
-        for i, column in enumerate(self.board[7]):
-            column.delete(self.column_labels[i])
-
-        self.row_labels = []
-        self.column_labels = []
-        self.row_numbers.reverse()
-        self.column_letters.reverse()
-        self._create_position_labels()
-        self.set_theme(self.theme.get("white"), self.theme.get("black"))
-        self.clear_board()
-        self.set_initial_position()
-
     def clear_board(self):
         """ Remove pieces and reset board values."""
         
@@ -198,7 +193,7 @@ class Board:
                 if square.piece:
                     square.delete(square.piece.id_piece)
                     square.piece = None
-        self.turn_off_highlights()
+        self.game.turn_off_highlights()
 
     def put_board(self):
         """ Calls the functions that create the graphical interface of the board."""

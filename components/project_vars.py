@@ -6,6 +6,8 @@ board = None
 clock = None
 panel = None
 clock_frame = None
+game = None
+menubar = None
 
 # Tablero
 
@@ -19,6 +21,7 @@ ongoing_game = 0
 
 OSCURO_SUAVE = "#1f1f1f"
 OSCURO_FUERTE = "#191918"
+TEMA_PREDETERMINADO_TABLERO = ("#bb935b", "#592f0a") # Blanco | Negro
 
 # Tabla de movimientos
 
