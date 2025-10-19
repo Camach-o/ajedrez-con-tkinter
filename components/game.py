@@ -1,11 +1,13 @@
 from tkinter import *
 if __name__ != "__main__":
     from components.pieces import *
+    from itertools import islice
     import components.project_vars as project_vars
     import components.board as board
     
 else:
     from pieces import *
+    from itertools import islice
     import project_vars as project_vars
     import board as board
 from PIL import Image, ImageTk
@@ -21,7 +23,7 @@ class ChessGame():
         self.fen_historial = []
         self.last_move = ""
         self.halfmove = 0
-        self.fullmove = 0
+        self.fullmove = 1
         self.en_passant = {'pawn': None, 'square': None}
         self.castling = None
         self.turn = [1, 0]                          # Switch para cambiar de turno
@@ -46,16 +48,18 @@ class ChessGame():
         king_position = self.get_king_square(self.turn[0])
         king_status = self.is_square_attacked(king_position, 1)
 
-        def is_triple_repetition(): # Falta limitar lectura del fen (posición del tablero y enroques solamente)
+        def is_triple_repetition():
             if not self.fen_historial:
                 return
             
             fen_list = list(self.fen_historial)
             actual_fen = fen_list.pop()
+            actual_fen = list([v for v in islice(actual_fen.split(), 3)])
 
             repetitions = 0
             for fen in fen_list[::-1]:
-                if fen == actual_fen:
+                fen_to_compare = list([v for v in islice(fen.split(), 3)])
+                if fen_to_compare == actual_fen:
                     repetitions += 1
                 if repetitions == 2:
                     return True
@@ -63,14 +67,8 @@ class ChessGame():
 
         # 50 movimiemtos
         def fifty_movements():
-            
-            # Si el movimiento anterior no fue captura de pieza y no fue movimiento de péon
-                # sumar 1 al contador de los 50 movimientos
-
             if self.halfmove == 100:
-                print("tablas por 50 movimientos")
-            # si se han alcanzado 50 movimientos
-                # retornar tablas por 50 movimientos
+                return True
 
         def is_there_enough_material():
             white_material = []
@@ -222,7 +220,7 @@ class ChessGame():
         self.last_move = f"{piece_indicator}{capture}{new_position}{check}"
         return self.last_move
     
-    def get_fen(self):
+    def get_fen(self): # Tal vez agregar un docstring
         fen = []
         # Orde Pieces
         tablero = self.board
@@ -272,7 +270,7 @@ class ChessGame():
 
         return "".join(fen)
 
-    def can_king_castling(self, king_color):
+    def can_king_castling(self, king_color): # Tal vez agregar un docstring
         king_square = self.get_king_square(king_color)
         king = king_square.piece
 
@@ -413,7 +411,7 @@ class ChessGame():
                     piece_to_pin.pinned = True
                     piece_to_pin.available_movements = squares_between_king_and_rival_piece
 
-    def move_piece(self, old_square, new_square): # Solo hace falta ponerle lo del peón al paso
+    def move_piece(self, old_square, new_square): # Solo hace falta los 50 movimientos
         """ Move a piece.
         
             Args:
@@ -423,45 +421,57 @@ class ChessGame():
 
         piece = old_square.piece
 
-        # For en-passant
+        # To do it en-passant and reset en-passant info
         if piece.type == "P":
             if new_square == self.en_passant['square']:
                 self.en_passant['pawn'].quit_piece()
         if self.en_passant:
             self.en_passant = {'pawn': None, 'square': None}
 
-        # For castling
+        # If the move is a castling
         def is_move_castling(row, column):
             # Left_castling
             new_coord = tuple([a + b for a, b in zip((row, column), (0, -2))])
             if new_coord == new_square.coordts:
                 self.move_piece(self.board[row][0], self.board[row][column-1])
-                if self.turn[0] == 1:
-                    self.fullmove -= 1
 
             # Right_castling
             new_coord = tuple([a + b for a, b in zip(old_square.coordts, (0, 2))])
             if new_coord == new_square.coordts:
                 self.move_piece(self.board[row][-1], self.board[row][column+1])
-                if self.turn[0] == 1:
-                    self.fullmove -= 1
 
         if piece.type == "K":
             row, column = old_square.coordts
             is_move_castling(row, column)
 
-        # For double step
+        # To get en-passant info if a pawn move 2 squares
         if piece.type == "P":
-            if (2, 0) == tuple([i - j for i, j in zip(old_square.coordts, new_square.coordts)]):
-                row, column = tuple([i + j for i, j in zip(old_square.coordts, (-1, 0))])
-                r, c = new_square.coordts
-                if self.board[r][c-1].piece or self.board[r][c+1].piece:
-                    self.en_passant = {'pawn': new_square, 'square': self.board[row][column]}
-            elif (-2, 0) == tuple([i - j for i, j in zip(old_square.coordts, new_square.coordts)]):
-                row, column = tuple([i + j for i, j in zip(old_square.coordts, (1, 0))])
-                r, c = new_square.coordts
-                if self.board[r][c-1].piece or self.board[r][c+1].piece:
-                    self.en_passant = {'pawn': new_square, 'square': self.board[row][column]}
+            movement_coords = tuple([i - j for i, j in zip(old_square.coordts, new_square.coordts)])
+            new_row, new_column = new_square.coordts
+            left_column = new_column - 1 
+            rigth_column = new_column + 1
+            there_is_a_pawn = False
+
+            for column in (left_column, rigth_column):
+                if column == left_column:
+                    if left_column < 0:
+                        continue
+                if column == rigth_column:
+                    if rigth_column > 7:
+                        continue
+                if self.board[new_row][column].piece:
+                    if self.board[new_row][column].piece.type == "P":
+                        if self.board[new_row][column].piece.color != self.turn[0]:
+                            there_is_a_pawn = True
+
+            if movement_coords == (2, 0):
+                if there_is_a_pawn:
+                    self.en_passant = {'pawn': new_square, 
+                                        'square': self.board[new_row+1][new_column]}
+            elif movement_coords == (-2, 0):
+                if there_is_a_pawn:
+                    self.en_passant = {'pawn': new_square, 
+                                        'square': self.board[new_row-1][new_column]}
 
         # Quit first_move atribute in the piece
         if piece.type in ("P", "K", "R"):
@@ -471,32 +481,14 @@ class ChessGame():
         new_square.put_piece(att)
         old_square.quit_piece()
 
-
-        # def fifty_movements():
-        #     print(self.last_move)
-        #     if not "x" in self.last_move:
-        #         self.halfmove += 1
-        #         return
-            
-        #     piezas_mayores = "RNBKQ"
-        #     for pieza in piezas_mayores:
-        #         if pieza in self.last_move:
-        #             break
-        #     else:
-        #         self.halfmove += 1
-        #         return
-            
-        #     self.halfmove = 0
-
-        # fifty_movements()
-        # if self.turn[0] == 1:
-        #     self.fullmove += 1
-
     def pass_turn(self): # No hacer cambios
         self.turn.reverse()
 
     def click_event(self, event): # Debería checar si hacer cambios
         """ Determines what action to take when a square is selected."""
+
+        if self.game_over:
+            return
 
         square = event.widget
         def actions():
@@ -513,13 +505,29 @@ class ChessGame():
 
             self.move_piece(self.selected_square, square)
             self.pass_turn()
-            self.fen_historial.append(self.get_fen())
             self.pin_pieces()
-            self.is_game_over()
             self.get_movement(old_coordts=old_coordts,
                               new_coordts=new_coordts,
                               piece_moved=piece_moved,
                               piece_captured=piece_captured)
+            
+            def fifty_movements():
+                if not "x" in self.last_move:
+                    piezas_mayores = "RNBKQO"
+                    for pieza in piezas_mayores:
+                        if pieza in self.last_move:
+                            self.halfmove += 1
+                            return
+                self.halfmove = 0
+            fifty_movements()
+
+            if self.turn[0] == 1:
+                self.fullmove += 1
+        
+            self.fen_historial.append(self.get_fen())
+            if self.is_game_over().get("status") in ("checkmate", "stalemate"):
+                print(self.is_game_over())
+                self.game_over = True
 
         if square != self.selected_square:
             if square.piece:
