@@ -1,0 +1,1 @@
+1. Cambiar la ejecución del menú partida, tenerlo como un menú del programa
