@@ -1,0 +1,2 @@
+pillow==12.1.0
+stockfish==4.0.5

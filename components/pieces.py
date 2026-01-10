@@ -35,7 +35,7 @@ class Piece:
         self.available_movements = None
         self.position = {"row": canvas.coordts[0], "column": canvas.coordts[1]}
 
-        self.set_atributes_to_piece_type()
+        self.set_attributes_for_piece_type()
 
         # GUI attributes
         self.canvas = canvas
@@ -52,7 +52,7 @@ class Piece:
         if not first_move in (1, 0):
             raise ValueError(f'{first_move} no es una opción valida')
 
-    def set_atributes_to_piece_type(self):
+    def set_attributes_for_piece_type(self):
         if self.ptype == "K":
             self.img_path = IMG_WHITE_KING if self.color else IMG_BLACK_KING
             self.movements = [(-1, -1), (-1, 1), (1, 1), (1, -1),
@@ -108,7 +108,7 @@ class Piece:
 
         elif self.ptype == "P":
             self.img_path = IMG_WHITE_PAWN if self.color else IMG_BLACK_PAWN
-                       
+
             if self.board_view == self.color:
                 self.movements = [(-1, 0), (-1, -1), (-1, 1)]
                 if self.position["row"] == 6:
@@ -120,5 +120,6 @@ class Piece:
 
             self.squares_limit = 1
 
-    def get_atributes(self):
+    def get_attributes(self):
+        """ Return the attributes of the piece."""
         return {'tipo': self.ptype, 'color': self.color, "first_move": self.first_move, "view": self.board_view}

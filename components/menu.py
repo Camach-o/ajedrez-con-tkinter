@@ -1,25 +1,21 @@
 import tkinter as tk
-# from pathlib import Path
-from tkinter import messagebox
-import components.project_vars as pv
 from webbrowser import open_new_tab
 from PIL import Image, ImageTk
+import stockfish
+import components.alert as alert
+import components.project_vars as pv
 from components.pieces import IMG_WHITE_QUEEN, IMG_WHITE_ROOK, IMG_WHITE_BISHOP, IMG_WHITE_KNIGHT, IMG_BLACK_QUEEN, IMG_BLACK_ROOK, IMG_BLACK_BISHOP, IMG_BLACK_KNIGHT
 
-# Custom Components
-class MenuButton(tk.Button):
-    def __init__(self, master, **kwargs):
-        super().__init__(master, width=10, bg="#A6A6A6", **kwargs)
-        self.configure(font=pv.FUENTE_BOTONES_MENU, activebackground="#A6A6A6")
+FUENTE_BOTONES_MENU = ("Calibri Bold", 14)
 
-# Menu options widgets
-class PartideMenu(): # Falta por hacer
+# Menu options
+class PartideMenu():
     def __init__(self, frame):
         self.frame = frame
         self.partideopts_frame = None
         self.clockopts_frame = None
         self.fen_frame = None
-        
+
         self.game_mode = None
         self.color_selected = None
         self.clock_status = None
@@ -34,7 +30,6 @@ class PartideMenu(): # Falta por hacer
         self.startpos = None
 
     def init_widgets(self):
-
         self.game_mode = tk.StringVar()
         self.game_mode.set(1)
         self.color_selected = tk.StringVar()
@@ -46,10 +41,10 @@ class PartideMenu(): # Falta por hacer
         self.partideopts_frame = tk.Frame(self.frame, width=400, height=205, bg="#1f1f1f")
         self.clockopts_frame = tk.Frame(self.frame, width=400, height=175, bg="#1f1f1f")
         self.fen_frame = tk.Frame(self.frame, width=400, height=180, bg="#1f1f1f")
-        
+
         # Label settings
         args_label = ([self.partideopts_frame, "Partida", 18],
-                      [self.partideopts_frame, "Opciones de la partida", 15], 
+                      [self.partideopts_frame, "Opciones de la partida", 15],
                       [self.clockopts_frame, "Opciones del reloj", 15],
                       [self.clockopts_frame, "Tiempo", 14],
                       [self.clockopts_frame, "Bonus", 14],
@@ -64,14 +59,14 @@ class PartideMenu(): # Falta por hacer
                             [self.partideopts_frame, "Jugar contra Stockfish", self.game_mode, 2],
                             [self.partideopts_frame, "Jugar partida LAN (activar servidor)", self.game_mode, 3],
                             [self.partideopts_frame, "Jugar con Blancas", self.color_selected, 1],
-                            [self.partideopts_frame, "Jugar con Negras", self.color_selected, 2], 
+                            [self.partideopts_frame, "Jugar con Negras", self.color_selected, 2],
                             [self.clockopts_frame, "Jugar con Reloj", self.clock_status, 1],
                             [self.clockopts_frame, "Jugar sin Reloj", self.clock_status, 2])
         for args in args_radiobutton:
             radiobutton = tk.Radiobutton(args[0], text=args[1], variable=args[2], value=args[3])
-            radiobutton.configure(bg=pv.OSCURO_SUAVE, activebackground=pv.OSCURO_SUAVE)      
+            radiobutton.configure(bg=pv.GRAY, activebackground=pv.GRAY)
             radiobutton.configure(fg="white", font=("Calibri Bold", 14), activeforeground="white")
-            radiobutton.configure(selectcolor=pv.OSCURO_SUAVE)
+            radiobutton.configure(selectcolor=pv.GRAY)
             self.radiobuttons[args[1]] = radiobutton
 
         # Time and Increment section
@@ -85,20 +80,20 @@ class PartideMenu(): # Falta por hacer
             entry.insert(0, value_to_insert)
             entry.pack_propagate(False)
             return entry
-        
+
         self.time_entry = create_time_entry(pv.clock_default_minutes)
         self.bonus_entry = create_time_entry(pv.clock_default_bonus)
-    
+
         # Fen section
         def set_fen():
             self.fen_entry.delete(0, tk.END)
             self.fen_entry.insert(0, pv.startposition)
 
         self.fen_entry = tk.Entry(self.fen_frame, width=36, bg="#A6A6A6")
-        self.fen_entry.configure(font=pv.FUENTE_BOTONES_MENU)
+        self.fen_entry.configure(font=FUENTE_BOTONES_MENU)
 
         self.startpos = tk.Button(self.fen_frame, width=13, text="Posición Inicial", bg="#A6A6A6")
-        self.startpos.configure(font=pv.FUENTE_BOTONES_MENU, activebackground="#A6A6A6", command=set_fen)
+        self.startpos.configure(font=FUENTE_BOTONES_MENU, activebackground="#A6A6A6", command=set_fen)
         set_fen()
 
     def save(self):
@@ -118,20 +113,33 @@ class PartideMenu(): # Falta por hacer
             clock_status = "active"
         if self.clock_status.get() == "2":
             clock_status = "desactive"
-        
+
         time = int(self.time_entry.get())
         bonus = int(self.bonus_entry.get())
         fen = self.fen_entry.get()
-        
+
         if not time in range(1, 61) or not bonus in range(0, 61):
-            messagebox.showinfo("Información", "Configuración de tiempo no valida")
-            return False
-        
-        if game_mode == "connected":
-            messagebox.showinfo("Información", "Por los momentos las partidas vía LAN no están activas")
+            alert.show_info(tittle="Parámetro Invalido",
+                            message="Configuración de tiempo no valida.")
             return False
 
-        pv.partida.start_partide(game_mode, color_selected, clock_status, time, bonus, fen)
+        if not stockfish.Stockfish._is_fen_syntax_valid(fen=fen):
+            alert.show_info(tittle="Parámetro Invalido",
+                            message="El FEN elegido no es un FEN valido.")
+            return False
+
+
+        pv.partide.restart()
+        if game_mode == "connected":
+            pv.partide.start_connected_partide(type_connection="host",
+                                               partide_settings=[game_mode,
+                                                                 color_selected,
+                                                                 clock_status, time,
+                                                                 bonus,
+                                                                 fen])
+            return True
+
+        pv.partide.start_partide(game_mode, color_selected, clock_status, time, bonus, fen)
         return True
 
     def show(self):
@@ -184,47 +192,47 @@ class PartideMenu(): # Falta por hacer
         self.fen_entry.place_forget()
         self.startpos.place_forget()
 
-class DifficultyMenu(): # Falta por hacer
+class DifficultyMenu():
     def __init__(self, frame):
         self.frame = frame
-        self.difficulty_tittle = None
-        self.radiobutton_options = {}
-        self.selected_option = None
+        self.menu_tittle = None
+        self.difficulty_options = {}
+        self.selected_difficulty = None
 
     def init_widgets(self):
+        self.menu_tittle = tk.Label(self.frame,
+                                    text="Elige un ELO para cambiar la difícultad para Stockfish.")
+        self.menu_tittle.configure(bg="#1f1f1f", font=("Calibri Bold", 18), fg="white")
 
-        self.selected_option = tk.StringVar()
-        self.selected_option.set(2)
+        self.selected_difficulty = tk.StringVar()
+        self.selected_difficulty.set(2)
 
-        self.difficulty_tittle = tk.Label(self.frame, text="Elige una difícultad para Stockfish.")
-        self.difficulty_tittle.configure(bg="#1f1f1f", font=("Calibri Bold", 18), fg="white")
-
-        arg_radiobuttons = [{'var_name': "very_easy", 'text': "Muy Fácil"},
-                            {'var_name': "easy", 'text': "Fácil"},
-                            {'var_name': "intermediate", 'text': "Intermedio"},
-                            {'var_name': "avanced", 'text': "Avanzado"},
-                            {'var_name': "hard", 'text': "Difícil"},
-                            {'var_name': "very_hard", 'text': "Muy Difícil"}]
-        for n_value, args in enumerate(arg_radiobuttons):
-            radiobutton = tk.Radiobutton(self.frame, text=args.get('text'), 
-                                         variable=self.selected_option, value=n_value)
-            radiobutton.configure(bg=pv.OSCURO_SUAVE, activebackground=pv.OSCURO_SUAVE)      
-            radiobutton.configure(fg="white", font=("Calibri Bold", 14), activeforeground="white")
-            radiobutton.configure(selectcolor=pv.OSCURO_SUAVE)
-            self.radiobutton_options[args.get('var_name')] = radiobutton
+        radiobutton_args = [{'var_name':"very_easy", 'text':"Muy Fácil (800)"},
+                            {'var_name':"easy", 'text':"Fácil (1100)"},
+                            {'var_name':"intermediate", 'text':"Intermedio (1400)"},
+                            {'var_name':"avanced", 'text':"Avanzado (1700)"},
+                            {'var_name':"hard", 'text':"Difícil (2000)"},
+                            {'var_name':"very_hard", 'text':"Muy Difícil (2300)"}]
+        for n_value, args in enumerate(radiobutton_args):
+            radiobutton = tk.Radiobutton(self.frame, selectcolor=pv.GRAY,
+                                        foreground="white", activeforeground="white",
+                                        variable=self.selected_difficulty, value=n_value,
+                                        bg=pv.GRAY, activebackground=pv.GRAY,
+                                        text=args.get('text'), font=("Calibri Bold", 14))
+            self.difficulty_options[args.get('var_name')] = radiobutton
 
     def save(self):
-        pv.partida.set_stockfish_difficulty(self.selected_option.get())
+        pv.partide.set_stockfish_difficulty(int(self.selected_difficulty.get()))
         return True
 
     def show(self):
-        self.radiobutton_options['very_easy'].grid(row=1, column=0)
-        self.radiobutton_options['easy'].grid(row=1, column=1)
-        self.radiobutton_options['intermediate'].grid(row=1, column=2)
-        self.radiobutton_options['avanced'].grid(row=2, column=0)
-        self.radiobutton_options['hard'].grid(row=2, column=1)
-        self.radiobutton_options['very_hard'].grid(row=2, column=2)
-        self.difficulty_tittle.grid(row=0, column=0, columnspan=3)
+        self.menu_tittle.grid(row=0, column=0, columnspan=3)
+        self.difficulty_options['very_easy'].grid(row=1, column=0)
+        self.difficulty_options['easy'].grid(row=1, column=1)
+        self.difficulty_options['intermediate'].grid(row=1, column=2)
+        self.difficulty_options['avanced'].grid(row=2, column=0)
+        self.difficulty_options['hard'].grid(row=2, column=1)
+        self.difficulty_options['very_hard'].grid(row=2, column=2)
 
         rows, cols = 4, 3
         for r in range(rows):
@@ -233,13 +241,13 @@ class DifficultyMenu(): # Falta por hacer
             self.frame.grid_columnconfigure(c, weight=1)
 
     def hide(self):
-        self.radiobutton_options['very_easy'].grid_forget()
-        self.radiobutton_options['easy'].grid_forget()
-        self.radiobutton_options['intermediate'].grid_forget()
-        self.radiobutton_options['avanced'].grid_forget()
-        self.radiobutton_options['hard'].grid_forget()
-        self.radiobutton_options['very_hard'].grid_forget()
-        self.difficulty_tittle.grid_forget()
+        self.menu_tittle.grid_forget()
+        self.difficulty_options['very_easy'].grid_forget()
+        self.difficulty_options['easy'].grid_forget()
+        self.difficulty_options['intermediate'].grid_forget()
+        self.difficulty_options['avanced'].grid_forget()
+        self.difficulty_options['hard'].grid_forget()
+        self.difficulty_options['very_hard'].grid_forget()
 
         rows, cols = 4, 3
         for r in range(rows):
@@ -248,47 +256,48 @@ class DifficultyMenu(): # Falta por hacer
             self.frame.grid_columnconfigure(c, weight=0)
 
 class MatchMenu(): # Falta por hacer
-    def __init__(self, frame):
+    def __init__(self, frame, top_level_menu):
         self.frame = frame
         self.connected_tittle = None
         self.no_connected_tittle = None
-        pass
+        self.top_level_menu = top_level_menu
 
     def init_widgets(self):
         # Connected player
         self.connected_tittle = tk.Label(self.frame, text="Desconectarse de la Partida.")
-        self.connected_tittle.configure(bg="#1f1f1f", font=("Calibri Bold", 20), fg="white")
-        self.disconnet_button = tk.Button(self.frame, text="DESCONECTARME", command=self.disconnect)
-        self.disconnet_button.configure(font=pv.FUENTE_BOTONES_MENU, activebackground="#A6A6A6", width=18, bg="#A6A6A6")
+        self.connected_tittle.configure(bg=pv.GRAY, font=("Calibri Bold", 20), fg="white")
+        self.disconnet_button = tk.Button(self.frame, command=self.disconnect)
+        self.disconnet_button.configure(text="DESCONECTARME", font=FUENTE_BOTONES_MENU,
+                                        activebackground="#A6A6A6", width=18, bg="#A6A6A6")
 
         # No connected player
-        self.no_connected_tittle = tk.Label(self.frame, text="Ingresa un código de invitación\npara poder conectarte a una partida.")
-        self.no_connected_tittle.configure(bg="#1f1f1f", font=("Calibri Bold", 18), fg="white")
-        self.no_connected_entry = tk.Entry(self.frame, width=30)
-        self.no_connected_entry.configure(font=pv.FUENTE_BOTONES_MENU, bg="#A6A6A6")
-        # Invitado
+        self.no_connected_tittle = tk.Label(self.frame, text="No estás conectado con ninguna partida LAN.\n" \
+                                            "¡ADVERTENCIA!\n" \
+                                            "Buscar una partida LAN detendrá la partida actual.")
+        self.no_connected_tittle.configure(bg=pv.GRAY, font=("Calibri Bold", 18), fg="white")
+        self.no_connected_button = tk.Button(self.frame, command=self.save)
+        self.no_connected_button.configure(text="BUSCAR Y CONECTARME", font=FUENTE_BOTONES_MENU,
+                                           activebackground="#A6A6A6", width=22, bg="#A6A6A6")
 
-        pass
-
-    def save(self): # Connect
+    def save(self):
         if pv.connection_wait_thread and pv.connection_wait_thread.is_alive():
             return
-        code = self.no_connected_entry.get()
-        pv.partida.serch_and_connect()
-
-        # pv.partida.start_partide(game_mode='connected', color_selected, clock_status, time, bonus, fen)
+        pv.partide.restart()
+        pv.partide.start_connected_partide(type_connection="guest")
         return True
 
     def disconnect(self):
-        pass
+        if pv.partide:
+            self.top_level_menu.close_menu()
+            pv.partide.finish_connected_partide()
 
-    def show(self, mostrar_segun="no_connected_player"):
-        if mostrar_segun == "connected_player":
+    def show(self, type_menu="no_connected_player"):
+        if type_menu == "connected_player":
             self.connected_tittle.grid(row=0, column=0)
             self.disconnet_button.grid(row=1, column=0, sticky="n")
-        elif mostrar_segun == "no_connected_player":
+        elif type_menu == "no_connected_player":
             self.no_connected_tittle.grid(row=0, column=0)
-            self.no_connected_entry.grid(row=1, column=0, sticky="n")
+            self.no_connected_button.grid(row=1, column=0, sticky="n")
 
         self.frame.grid_rowconfigure(0, weight=1)
         self.frame.grid_rowconfigure(1, weight=1)
@@ -298,22 +307,26 @@ class MatchMenu(): # Falta por hacer
         self.connected_tittle.grid_forget()
         self.disconnet_button.grid_forget()
         self.no_connected_tittle.grid_forget()
-        self.no_connected_entry.grid_forget()
+        self.no_connected_button.grid_forget()
 
         self.frame.grid_rowconfigure(0, weight=0)
         self.frame.grid_rowconfigure(1, weight=0)
         self.frame.grid_columnconfigure(0, weight=0)
 
-class StyleMenu(): # No parece ser necesario hacer algo más
+class StyleMenu():
     def __init__(self, frame):
         self.frame = frame
         self.labels = {}
         self.entrys = {}
 
+        self.check_color = None
+        self.color_view = None
+        self.square_list = None
+
     def init_widgets(self):
-        for args in (["Casillas Blancas", "white", pv.white_theme], ["Casillas Negras", "black", pv.black_theme]):
+        for args in (["Casillas Blancas", "white", pv.DEFAULT_BOARD_WHITE_THEME], ["Casillas Negras", "black", pv.DEFAULT_BOARD_BLACK_THEME]):
             label = tk.Label(self.frame, text=args[0], fg="white")
-            label.configure(font=("Calibri Bold", 18), bg=pv.OSCURO_SUAVE)
+            label.configure(font=("Calibri Bold", 18), bg=pv.GRAY)
             entry = tk.Entry(self.frame, width=12, bg="#A6A6A6")
             entry.configure(font=("Calibri Bold", 12), fg=args[1], relief="raised", bd=2)
             entry.insert(0, args[2].upper())
@@ -337,6 +350,8 @@ class StyleMenu(): # No parece ser necesario hacer algo más
 
     def _update_color(self):
         try:
+            if not self.entrys["white"].get() or not self.entrys["black"].get():
+                raise Exception
             if self.entrys["white"].get() == self.entrys["black"].get():
                 raise Exception
             color = [self.entrys["white"].get(), self.entrys["black"].get()]
@@ -344,19 +359,17 @@ class StyleMenu(): # No parece ser necesario hacer algo más
                 square.configure(bg=color[0])
                 if loop == 1:
                     continue
-                else: 
-                    color.reverse()
+                color.reverse()
         except:
-            messagebox.showerror("HUBO UN ERROR", "La configuración seleccionada no puede ser aplicada.")
+            alert.show_info(tittle="HUBO UN ERROR", message="La configuración seleccionada no puede ser aplicada.")
             return False
-        else:
-            return True
+        return True
 
     def save(self):
         if self._update_color():
-            pv.white_theme = self.entrys["white"].get().upper()
-            pv.black_theme = self.entrys["black"].get().upper()
-            pv.board.set_theme(pv.white_theme, pv.black_theme)
+            pv.DEFAULT_BOARD_WHITE_THEME = self.entrys["white"].get().upper()
+            pv.DEFAULT_BOARD_BLACK_THEME = self.entrys["black"].get().upper()
+            pv.board.set_theme(pv.DEFAULT_BOARD_WHITE_THEME, pv.DEFAULT_BOARD_BLACK_THEME)
             return True
         return False
 
@@ -370,9 +383,9 @@ class StyleMenu(): # No parece ser necesario hacer algo más
 
     def hide(self):
         self.entrys["white"].delete(0, tk.END)
-        self.entrys["white"].insert(0, pv.white_theme)
+        self.entrys["white"].insert(0, pv.DEFAULT_BOARD_WHITE_THEME)
         self.entrys["black"].delete(0, tk.END)
-        self.entrys["black"].insert(0, pv.black_theme)
+        self.entrys["black"].insert(0, pv.DEFAULT_BOARD_BLACK_THEME)
         self.frame.focus_set()
         self.labels["white"].place_forget()
         self.entrys["white"].place_forget()
@@ -381,7 +394,7 @@ class StyleMenu(): # No parece ser necesario hacer algo más
         self.color_view.place_forget()
         self.check_color.place_forget()
 
-class CreditsMenu(): # No parece que haga falta hacer algo, tal vez docstrigns
+class CreditsMenu():
     def __init__(self, frame):
         self.frame = frame
         self.thanks = None
@@ -395,12 +408,12 @@ class CreditsMenu(): # No parece que haga falta hacer algo, tal vez docstrigns
 
     def init_widgets(self):
         self.thanks = tk.Label(self.frame, text=self.text, justify='center', fg="white")
-        self.thanks.configure(font=("Calibri Bold", 14), bg=pv.OSCURO_SUAVE)
+        self.thanks.configure(font=("Calibri Bold", 14), bg=pv.GRAY)
 
         self.github_link = tk.Button(self.frame, text=self.link, fg="white", bd=0)
-        self.github_link.configure(font=("Calibri Bold", 14), bg=pv.OSCURO_SUAVE)
-        self.github_link.configure(activeforeground="white", activebackground=pv.OSCURO_SUAVE)
-        self.github_link.configure(command=lambda: self.open_github_link())
+        self.github_link.configure(font=("Calibri Bold", 14), bg=pv.GRAY)
+        self.github_link.configure(activeforeground="white", activebackground=pv.GRAY)
+        self.github_link.configure(command=self.open_github_link)
 
     def open_github_link(self):
         open_new_tab("https://github.com/Camach-o")
@@ -413,6 +426,7 @@ class CreditsMenu(): # No parece que haga falta hacer algo, tal vez docstrigns
         self.thanks.place_forget()
         self.github_link.place_forget()
 
+# No menu option
 class PromotionMenu():
     def __init__(self, frame, top_level_menu):
         self.frame = frame
@@ -423,12 +437,12 @@ class PromotionMenu():
         self.active = False
         self.piece_to_promote_info = {}
 
-    def init_widgets(self): # No veo por qué cambiar (Tal vez colocar letras en mayusculas)
-        piece_types = ('q', 'r', 'b', 'n')
+    def init_widgets(self):
+        piece_types = ('Q', 'R', 'B', 'N')
 
         for ptype in piece_types:
-            piece_option = tk.Label(self.frame, text=ptype, width=80, height=80)
-            piece_option.configure(bg=pv.white_theme, fg="white", bd=3, relief="solid")
+            piece_option = tk.Label(self.frame, text=ptype, width=80, height=80, bd=3)
+            piece_option.configure(bg=pv.DEFAULT_BOARD_WHITE_THEME, fg="white", relief="solid")
             piece_option.bind("<Button-1>", self.define_promotion)
             self.options.append(piece_option)
 
@@ -468,10 +482,16 @@ class PromotionMenu():
         for c in range(4):
             self.frame.grid_columnconfigure(c, weight=0)
 
-    def define_promotion(self, event): # No parece necesario cambiar
+    def define_promotion(self, event):
         promotion = event.widget.configure().get("text")[-1]
         self.top_level_menu.close_promotion_menu()
-        pv.partida.main_player.promotion_selected.set(promotion.upper())
+        pv.partide.main_player.promotion_selected.set(promotion)
+
+# Custom Component
+class MenuButton(tk.Button):
+    def __init__(self, master, **kwargs):
+        super().__init__(master, width=10, bg="#A6A6A6", **kwargs)
+        self.configure(font=FUENTE_BOTONES_MENU, activebackground="#A6A6A6")
 
 class Menu():
     def __init__(self, root):
@@ -484,14 +504,13 @@ class Menu():
         self.button_close = None
         self.button_save = None
 
-        self.init_menu()
+        self._init_menu()
 
-    def init_menu(self):
-        # width=600, height=250 Reference of size
-        self.menu_frame = tk.Frame(self.root, bd="2", bg=pv.OSCURO_SUAVE, relief="solid")
-        self.top_frame = tk.Frame(self.menu_frame, bg=pv.OSCURO_SUAVE)
+    def _init_menu(self):
+        self.menu_frame = tk.Frame(self.root, bd="2", bg=pv.GRAY, relief="solid")
+        self.top_frame = tk.Frame(self.menu_frame, bg=pv.GRAY)
+        self.bottom_frame = tk.Frame(self.menu_frame, bg=pv.GRAY)
         self.top_frame.grid(row=0, column=0)
-        self.bottom_frame = tk.Frame(self.menu_frame, bg=pv.OSCURO_SUAVE)
         self.bottom_frame.grid(row=1, column=0)
 
         self.button_save = MenuButton(self.bottom_frame, text="Guardar", command=self.save_configuration)
@@ -505,14 +524,13 @@ class Menu():
         self.credits_menu.init_widgets()
         self.difficulty_menu = DifficultyMenu(self.top_frame)
         self.difficulty_menu.init_widgets()
-        # self.match_menu = MatchMenu(self.top_frame)
-        # self.match_menu.init_widgets()
+        self.match_menu = MatchMenu(self.top_frame, self)
+        self.match_menu.init_widgets()
         self.promotion_menu = PromotionMenu(self.top_frame, self)
         self.promotion_menu.init_widgets()
 
-    def _place_menu(self): 
-        """ Returns the coordinates where the menu will be placed."""
-
+    def _place_menu(self):
+        """ Calculate the coordinates where the menu will be placed and place it."""
         self.menu_frame.update()
         height_menu = self.menu_frame.winfo_height()
         width_menu = self.menu_frame.winfo_width()
@@ -521,6 +539,12 @@ class Menu():
         self.menu_frame.place(y=y, x=x)
 
     def _show_buttons(self, txt_save_button="Guardar", only_close=False):
+        """ Packs the buttons of the main menu.
+
+            Args:
+                - txt_save_button (str): text to set in the save button (it can change).
+                - only_close (bool): determine if the cancel button is display or are display both.
+        """
         self.button_save.pack(side="left", padx=(0, 80), pady=(0, 5))
         self.button_close.pack(side="right", padx=(80, 0), pady=(0, 5))
         self.button_save.configure(text=txt_save_button)
@@ -531,19 +555,24 @@ class Menu():
             self.button_close.pack(pady=(0, 5))
 
     def show_promotion_menu(self, color="white"):
+        """ Display the promotion menu.
+        
+            Args:
+                - color (str): is the color of the player who is promoted.
+        """
         self.menu_frame.place(y=50, x=200)
         if self.selected_menu:
             self.close_menu()
-        
+
         self.bottom_frame.grid_forget()
         self.button_close.pack_forget()
 
         self.top_frame.configure(width=460, height=115)
         self.top_frame.grid_propagate(False)
-                
+
         self.selected_menu = self.promotion_menu
         self.selected_menu.show(color=color)
-        
+
         self._place_menu()
 
         self.promotion_menu.active = True
@@ -554,22 +583,18 @@ class Menu():
 
     def show_menu(self, option): 
         """ Displays the menu and widgets for the selected option.
-        
-        - option (event): Widget that called the function.
-        """
 
+            Arg:
+                - option (event): widget that called the function.
+        """
         if self.promotion_menu.active:
             return
+
         if self.selected_menu:
             self.close_menu()
-        
+
         self.menu_frame.place(y=50, x=200)
         option_called = option.widget.configure().get("text")[-1]
-        if pv.ongoing_game:
-            if option_called == "Dificultad" or option_called == "Emparejamiento":
-                messagebox.showwarning("FINALIZA LA PARTIDA", 
-                                       "Mientras haya una partida en juego no se pueden realizar nuevos ajustes.")
-                return
 
         if option_called in pv.menu_options:
             if option_called == "Partida":
@@ -580,14 +605,17 @@ class Menu():
                 self.top_frame.configure(width=600, height=250)
                 self.top_frame.grid_propagate(False)
                 self._show_buttons(txt_save_button="Guardar")
-            # elif option_called == "Emparejamiento":
-            #     messagebox.showinfo("Información", "Por los momentos las partidas vía LAN no están activas")
-            #     self.close_menu()
-            #     return False
-                # self.selected_menu = self.match_menu
-                # self.top_frame.configure(width=600, height=200)
-                # self.top_frame.grid_propagate(False)
-                # self._show_buttons(txt_save_button="Conectarme")
+            elif option_called == "Emparejamiento":
+                self.selected_menu = self.match_menu
+                self.top_frame.configure(width=600, height=200)
+                self.top_frame.grid_propagate(False)
+                self._show_buttons(only_close=True)
+                if pv.there_is_an_active_server:
+                    self.selected_menu.show(type_menu="connected_player")
+                else:
+                    self.selected_menu.show(type_menu="no_connected_player")
+                self._place_menu()
+                return
             elif option_called == "Estilo":
                 self.selected_menu = self.style_menu
                 self.top_frame.configure(width=600, height=250)
@@ -596,13 +624,12 @@ class Menu():
                 self.selected_menu = self.credits_menu
                 self.top_frame.configure(width=600, height=250)
                 self._show_buttons(only_close=True)
-                
+
         self.selected_menu.show()
         self._place_menu()
 
     def save_configuration(self):
         """ Save the new settings for the selected option and update the game."""
-
         if self.selected_menu:
             if self.selected_menu.save():
                 self.close_menu()

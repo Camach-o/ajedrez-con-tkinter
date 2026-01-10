@@ -74,15 +74,8 @@ class ChessBoard:
                 square_widget.grid(row=row, column=column)
                 self.board[row][column] = square_widget
 
-    def set_squares_callback(self, callback):
-        """ Bind a function whith the squares."""
-        for row in self.board:
-            for square in row:
-                square.bind('<Button-1>', callback)
-
     def _create_position_labels(self):
         """ Create and put the position labels."""
-
         for row, n in enumerate(self.row_numbers):
             square = self.board[row][0]
             num = square.create_text(12, 14, text=n, font=("Arial Black", 16))
@@ -92,6 +85,18 @@ class ChessBoard:
             square = self.board[7][column]
             let = square.create_text(70, 68, text=n, font=("Arial Black", 16))
             self.column_labels.append(let)
+
+    def set_squares_callback(self, callback):
+        """ Bind a function whith the squares."""
+        for row in self.board:
+            for square in row:
+                square.bind('<Button-1>', callback)
+
+    def put_board(self):
+        """ Calls the functions that create the graphical interface of the board."""
+        self._create_board_squares()
+        self._create_position_labels()
+        self.set_theme(self.theme.get("white"), self.theme.get("black"))
 
     def put_piece(self, square, ptype, color, board_view):
         """ Create and put a piece in the board.
@@ -109,7 +114,6 @@ class ChessBoard:
 
     def turn_the_board(self):
         """ Turn the board upside down."""
-
         for i, row in enumerate(self.board):
             row[0].delete(self.row_labels[i])
         for i, column in enumerate(self.board[7]):
@@ -124,6 +128,15 @@ class ChessBoard:
         self.clear_board()
         self.view.reverse()
 
+    def clear_board(self):
+        """ Remove pieces and reset board values."""
+        for row in self.board:
+            for square in row:
+                if square.piece:
+                    square.delete(square.piece.id_piece)
+                    square.piece = None
+        self.turn_off_highlights()
+
     def set_theme(self, white, black):
         """ Set the theme on the squares and position labels on the board.
         
@@ -131,7 +144,6 @@ class ChessBoard:
                 white (str): Hexadecimal value for the color white.
                 black (str): Hexadecimal value for the color black.
         """
-
         theme = [white, black]
         for row in self.board:
             for square in row:
@@ -151,26 +163,10 @@ class ChessBoard:
 
     def turn_off_highlights(self):
         """ Move across the board to turn off the active highlights."""
-
         for row in self.board:
             for square in row:
                 if square.highlight:
                     square.turn_off_highlight()
-
-    def clear_board(self):
-        """ Remove pieces and reset board values."""
-        for row in self.board:
-            for square in row:
-                if square.piece:
-                    square.delete(square.piece.id_piece)
-                    square.piece = None
-        self.turn_off_highlights()
-
-    def put_board(self):
-        """ Calls the functions that create the graphical interface of the board."""
-        self._create_board_squares()
-        self._create_position_labels()
-        self.set_theme(self.theme.get("white"), self.theme.get("black"))
 
     def get_position_of_square(self, square):
         """ Return the coordinate of the square."""

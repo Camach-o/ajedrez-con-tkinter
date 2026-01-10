@@ -1,5 +1,6 @@
 from tkinter import StringVar
 from itertools import islice
+import components.alert as alert
 import components.project_vars as pv
 
 BOARD_LIMIT = 8
@@ -17,7 +18,7 @@ class ChessPlayer():
         self.ob_board = board
         self.board = self.ob_board.board
 
-        # Chess player atributes to see
+        # Chess player attributes to see
         self.board_view = [1, 0]                    # 1 Para Blancas | 0 Para Negras
         self.turn = [1, 0]                          # Switch para cambiar de turno
         self.last_move = ""
@@ -35,9 +36,9 @@ class ChessPlayer():
         self.halfmove = 0
         self.fullmove = 1
 
-        self.opponent = 0
+        self.opponent_color = 0
 
-        # Player atributes
+        # Player attributes
         self._listeners = []
 
     def is_game_over(self):
@@ -462,7 +463,6 @@ class ChessPlayer():
         """
 
         piece = old_square.piece
-        # print(old_square)
 
         # To do it en-passant and reset en-passant info
         if piece.ptype == "P":
@@ -517,19 +517,18 @@ class ChessPlayer():
                     self.en_passant = {'pawn': new_square, 
                                         'square': self.board[new_row-1][new_column]}
 
-        # Quit first_move atribute in the piece
+        # Quit first_move attribute in the piece
         if piece.ptype in ("P", "K", "R") and piece.first_move:
             piece.first_move = False
-            print()
         # Promotion
         if piece.ptype == "P":
             if new_square in self.board[0] or new_square in self.board[7]:
-                opponent = "white" if (self.turn[0] == 1) else "black"
-                if self.opponent != opponent:
+                opponent_color = "white" if (self.turn[0] == 1) else "black"
+                if self.opponent_color != opponent_color:
                     self.promotion_selected = StringVar(value="waitting")
-                    pv.menubar.show_promotion_menu(color="white" if (self.turn[0] == 1) else "black")
+                    pv.menu.show_promotion_menu(color="white" if (self.turn[0] == 1) else "black")
                     pv.window.wait_variable(self.promotion_selected)
-                    att = piece.get_atributes()
+                    att = piece.get_attributes()
                     att['tipo'] = self.promotion_selected.get()
                     new_square.put_piece(att)
                     old_square.quit_piece()
@@ -537,18 +536,17 @@ class ChessPlayer():
                     return
                 else:
                     promotion = self.promotion_selected.upper()
-                    att = piece.get_atributes()
+                    att = piece.get_attributes()
                     att['tipo'] = promotion
-                    print(self.promotion_selected)
                     new_square.put_piece(att)
                     old_square.quit_piece()
                     return
 
-        att = piece.get_atributes()
+        att = piece.get_attributes()
         new_square.put_piece(att)
         old_square.quit_piece()
 
-    def recive_movement(self, movement):
+    def receive_movement(self, movement):
         if len(movement) == 5:
             self.promotion_selected = movement[-1]
             self.active_promotion = True
@@ -616,8 +614,28 @@ class ChessPlayer():
 
         self.active_promotion = False
         
-        if self.is_game_over().get("status") in ("checkmate", "stalemate"):
-            print(self.is_game_over())
+        partide_status = self.is_game_over().get("status")
+        if partide_status in ("checkmate", "stalemate"):
+            if partide_status == "checkmate":
+                if self.pieces_to_move == "all":
+                    if self.turn[0] == 1:
+                        alert.show_info(tittle="Partida finalizada.", message="!Han ganado las Negras¡")
+                    elif self.turn[0] == 0:
+                        alert.show_info(tittle="Partida finalizada.", message="!Han ganado las Blancas¡")
+                elif self.pieces_to_move == 1:
+                    if self.turn[0] == 1:
+                        alert.show_info(tittle="Partida finalizada.", message="has perdido...")
+                    elif self.turn[0] == 0:
+                        alert.show_info(tittle="Partida finalizada.", message="¡HAS GANADO!")
+                elif self.pieces_to_move == 0:
+                    if self.turn[0] == 1:
+                        alert.show_info(tittle="Partida finalizada.", message="¡HAS GANADO!")
+                    elif self.turn[0] == 0:
+                        alert.show_info(tittle="Partida finalizada.", message="has perdido...")
+            elif partide_status == "stalemate":
+                alert.show_info(tittle="Partida finalizada.", message="¡TABLAS!")
+            pv.ongoing_game = False
+            pv.clock.kill_timers()
             self.game_over = True
 
     def set_pieces_to_control(self, pieces_to_control):
@@ -631,7 +649,7 @@ class ChessPlayer():
             txt = f'The value "{pieces_to_control}" is not valid.'
             raise ValueError(txt)
         
-    def suscribe_a_watcher(self, callback):
+    def suscribe_observer(self, callback):
         if callback not in self._listeners:
             self._listeners.append(callback)
 
@@ -642,23 +660,24 @@ class ChessPlayer():
     def click_event(self, event): # Debería checar si hacer cambios
         """ Determines what action to take when a square is selected."""
 
-        print("El jugador hizo un click.")
-
         if self.active_promotion:
-            return
+            return # The player can't touch when the promotion menu is active
 
         if self.fen_index != (len(self.fen_historial)-1):
-            print("No coinciden los indices", self.fen_index, (len(self.fen_historial)-1))
             return # When the player is in other fen
 
         if self.game_over:
-            print("El juego ya terminó, no se pueden mover las piezas.")
             return # When game is over
 
         if self.pieces_to_move != 'all':
             if not self.pieces_to_move == self.turn[0]:
-                print("No es tu turno, no puedes mover las piezas.")
                 return # When isn't the player turn
+
+        if pv.there_is_an_active_server and not pv.is_there_a_connected_player:
+            return # When there is a connected game but isn't a connected player
+
+        if pv.dont_touch:
+            return # Is necesary that the player don't touch
 
         square_touched = event.widget
         if square_touched != self.selected_square:
@@ -675,9 +694,7 @@ class ChessPlayer():
                         new = self.ob_board.get_position_of_square(square_touched)
                         self.promotion_selected = ""
                         self.start_process_to_move(self.selected_square, square_touched)
-                        # last_move = f"{old}{new}"
                         last_move = f"{old}{new}{self.promotion_selected}"
-                        print(last_move)
                         self.show_move(last_move)
                     self.turn_off_highlights()         
             else: # Movement
@@ -687,7 +704,6 @@ class ChessPlayer():
                     self.promotion_selected = ""
                     self.start_process_to_move(self.selected_square, square_touched)
                     last_move = f"{old}{new}{self.promotion_selected}"
-                    print(last_move)
                     self.show_move(last_move)
                 self.turn_off_highlights()
 
@@ -916,18 +932,17 @@ class ChessPlayer():
         self.halfmove = int(halfmove)
         self.fullmove = int(fullmove)
 
-    def active(self, fen, color_selected, opponent): # No hacer cambios
+    def active(self, fen, color_selected, opponent_color): # No hacer cambios
         if color_selected == "white":
             self.board_view = [1, 0]
         if color_selected == "black":
             self.board_view = [0, 1]
 
         if self.ob_board.view != self.board_view:
-            # print("Vista tablero: ",self.ob_board.view, "Vista elegida: " self.board_view[0])
             self.ob_board.turn_the_board()
 
-        self.opponent = opponent
-        if opponent:
+        self.opponent_color = opponent_color
+        if opponent_color:
             self.pieces_to_move = color_selected
         else:
             self.pieces_to_move = "all"
@@ -937,14 +952,12 @@ class ChessPlayer():
         self.fen_historial.append(fen) # Mirar de ojo el tema con este fen
         self.ob_board.set_squares_callback(self.click_event)
 
-    def restart(self): # Parece ser que no necesita nada más
-
-        # Chess player atributes to see
-        self.board_view = [1, 0]                    # 1 Para Blancas | 0 Para Negras
-        self.turn = [1, 0]                          # Switch para cambiar de turno
+    def restart(self):
+        self.board_view = [1, 0]
+        self.turn = [1, 0]
         self.last_move = ""
         self.pieces_to_move = None
-        self.selected_square = None                 # Almacena la casilla que ha sido clickeada
+        self.selected_square = None
         self.game_over = False
 
         self.fen_historial = []
@@ -956,24 +969,32 @@ class ChessPlayer():
         self.promotion_selected = ""
         self.halfmove = 0
         self.fullmove = 1
-        self.opponent = 0
+        self.opponent_color = 0
 
     # Las funciones para mover el fen son similares, tal vez podría reducir código
     def first_fen(self):
+        if not self.fen_historial:
+            return
         self.fen_index = 0
         self.set_fen_position(self.fen_historial[self.fen_index], self.board_view[0])
 
     def last_fen(self):
+        if not self.fen_historial:
+            return
         self.fen_index = (len(self.fen_historial)-1)
         self.set_fen_position(self.fen_historial[self.fen_index], self.board_view[0])
 
     def previous_fen(self):
+        if not self.fen_historial:
+            return
         if self.fen_index == 0:
             return
         self.fen_index -= 1
         self.set_fen_position(self.fen_historial[self.fen_index], self.board_view[0])
 
     def next_fen(self):
+        if not self.fen_historial:
+            return
         if self.fen_index == (len(self.fen_historial)-1):
             return
         self.fen_index += 1 
