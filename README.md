@@ -1,5 +1,7 @@
 # Juego de Ajedrez
 
+![Image Alt](https://github.com/Camach-o/ajedrez-con-tkinter/blob/d120273d53cbb67b5a3da4184b65a8b130ab1d0a/visual_reference.png)
+
 ## Descripción
 
 Es un juego de ajedrez creado en Python con una interfaz gráfica elaborada con Tkinter.  Diseñado para satisfacer toda la lógica de una partida de ajedrez: enroques, peón al paso, coronación, etc. También cumple con las reglas de las tablas como 50 movimientos, triple repetición, material insuficiente y ahogado.
