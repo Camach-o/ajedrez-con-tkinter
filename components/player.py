@@ -619,9 +619,9 @@ class ChessPlayer():
             if partide_status == "checkmate":
                 if self.pieces_to_move == "all":
                     if self.turn[0] == 1:
-                        alert.show_info(tittle="Partida finalizada.", message="!Han ganado las Negras¡")
+                        alert.show_info(tittle="Partida finalizada.", message="¡Han ganado las Negras!")
                     elif self.turn[0] == 0:
-                        alert.show_info(tittle="Partida finalizada.", message="!Han ganado las Blancas¡")
+                        alert.show_info(tittle="Partida finalizada.", message="¡Han ganado las Blancas!")
                 elif self.pieces_to_move == 1:
                     if self.turn[0] == 1:
                         alert.show_info(tittle="Partida finalizada.", message="has perdido...")
