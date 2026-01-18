@@ -1,0 +1,2 @@
+# Para ignorar el contenido del motor de Stockfish
+stockfish_module/** linguist-vendored
